@@ -4,9 +4,9 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - Ships
   - tile
-  - playerShips
+  - NPCShips
+  - PlayerShips
   layers:
   - Default
   - TransparentFX

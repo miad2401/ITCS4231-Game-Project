@@ -8,12 +8,19 @@ public class Tile : MonoBehaviour
     public bool isSelected = false;
     public bool isTarget = false;
     public bool isSelectable = false;
+    public bool isTargetable = false;
 
     public List<Tile> neighbors = new List<Tile>();
 
+    //BFS for player movement
     public bool hasVisited = false;
     public Tile parent = null;
     public int distance = 0;
+
+    //A* for enemy movement
+    public float f = 0;
+    public float g = 0;
+    public float h = 0;
 
     void Start()
     {
@@ -26,16 +33,16 @@ public class Tile : MonoBehaviour
         if (isSelected)
         {
             GetComponent<Renderer>().material.color = Color.yellow;
-        }
-        else if (isTarget)
+        } else if (isTarget) 
         {
             GetComponent<Renderer>().material.color = Color.blue;
-        }
-        else if (isSelectable)
+        } else if (isSelectable) 
         {
             GetComponent<Renderer>().material.color = Color.green;
-        }
-        else
+        } else if (isTargetable)
+        {
+            GetComponent<Renderer>().material.color = Color.red;
+        } else
         {
             GetComponent<Renderer>().material.color = Color.gray;
         }
@@ -49,24 +56,27 @@ public class Tile : MonoBehaviour
         isSelectable = false;
         isTarget = false;
         isSelectable = false;
+        isTargetable = false;
 
         hasVisited = false;
         parent = null;
         distance = 0;
+
+        f = g = h = 0;
     }
 
-    public void FindNeighbors()
+    public void FindNeighbors(Tile target)
     {
         Reset();
 
         //Check all for tiles in all directions
-        CheckTile(Vector3.forward);
-        CheckTile(Vector3.back);
-        CheckTile(Vector3.right);
-        CheckTile(Vector3.left);
+        CheckTile(Vector3.forward, target);
+        CheckTile(Vector3.back, target);
+        CheckTile(Vector3.right, target);
+        CheckTile(Vector3.left, target);
     }
 
-    public void CheckTile(Vector3 direction)
+    public void CheckTile(Vector3 direction, Tile target)
     {
         //Find overlapping colliders
         Vector3 halfExtents = new Vector3(9f, 0.25f, 9f);
@@ -80,7 +90,7 @@ public class Tile : MonoBehaviour
             {
                 
                 RaycastHit hit;
-                if (!Physics.Raycast(tile.transform.position, Vector3.up, out hit, 10))
+                if (!Physics.Raycast(tile.transform.position, Vector3.up, out hit, 10) || (tile == target))
                 {
                     //If nothing is found, add tile to neighbors
                     neighbors.Add(tile);

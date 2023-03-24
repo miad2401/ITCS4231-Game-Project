@@ -8,21 +8,25 @@ public class ShipMove : TacticalMovement
     // Start is called before the first frame update
     void Start()
     {
-        init();
+        Init();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (!moving)
+        if (!turn)
+        {
+            return;
+        }
+
+        if (!moving && currentAction == action.moving)
         {
             FindSelectableTiles();
             CheckMouse();
-        } else
+        } else if (currentAction == action.moving)
         {
-
+            Move();
         }
-        
     }
 
     void CheckMouse()

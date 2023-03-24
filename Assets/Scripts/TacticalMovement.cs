@@ -1,18 +1,17 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public class TacticalMovement : MonoBehaviour
+public class TacticalMovement : Action
 {
-    List<Tile> selectableTiles = new List<Tile>();
-    GameObject[] tiles;
+    [SerializeField] public Attack attack;
 
     Stack<Tile> movementPath = new Stack<Tile>();
-    Tile currentTile;
 
-    public bool moving = false;
-    [SerializeField] public int moveDistance = 1;
+    [HideInInspector] public bool moving = false;
+    
     [SerializeField] public float moveSpeed = 2;
 
     Vector3 velocity = new Vector3();
@@ -20,83 +19,15 @@ public class TacticalMovement : MonoBehaviour
 
     float halfHeight = 0;
 
-    public void init()
+    [HideInInspector] public Tile actualTargetTile;
+
+    public void Init()
     {
         tiles = GameObject.FindGameObjectsWithTag("tile");
 
         halfHeight = GetComponent<Collider>().bounds.extents.y;
 
-
-    }
-
-    public void GetCurrentTile()
-    {
-        currentTile = GetTargetTile(gameObject);
-        currentTile.isSelected = true;
-    }
-
-    public Tile GetTargetTile(GameObject target) 
-    { 
-        RaycastHit hit;
-        Tile tile = null;
-
-        if(Physics.Raycast(target.transform.position, Vector3.down, out hit, 10))
-        {
-            tile = hit.collider.GetComponent<Tile>();
-        }
-
-        return tile;
-    }
-
-    public void ComputeNeighborsList()
-    {
-        foreach (GameObject tile in tiles)
-        {
-            Tile t = tile.GetComponent<Tile>();
-            t.FindNeighbors();
-        }
-    }
-
-    public void FindSelectableTiles()
-    {
-        ComputeNeighborsList();
-        GetCurrentTile();
-
-
-        //Find selectable tiles using BFS
-        Queue<Tile> process = new Queue<Tile>();
-        process.Enqueue(currentTile);
-        currentTile.hasVisited = true;
-        //Set tile's parent here, leave as null for now
-
-        //While there are legal tiles to process
-        while (process.Count > 0)
-        {
-            //Get current tile
-            Tile t = process.Dequeue();
-
-            //Add tile to be selectable and set it to be selectable
-            selectableTiles.Add(t);
-            t.isSelectable = true;
-
-            //Only process tiles that are within the move distance
-            if (t.distance < moveDistance)
-            {
-                //Get all the tile's neighbors
-                foreach (Tile tile in t.neighbors)
-                {
-                    //We only care about tiles that havent been visited by the algorithm yet
-                    if (!tile.hasVisited)
-                    {
-                        tile.parent = t;
-                        tile.hasVisited = true;
-                        tile.distance = 1 + t.distance;
-
-                        process.Enqueue(tile);
-                    }
-                }
-            }
-        }
+        TurnManager.AddUnit(this);
     }
 
     public void MoveToTile(Tile tile)
@@ -111,5 +42,164 @@ public class TacticalMovement : MonoBehaviour
             movementPath.Push(next);
             next = next.parent;
         }
+    }
+
+    public void Move()
+    {
+        if (movementPath.Count > 0)
+        {
+            Tile t = movementPath.Peek();
+            Vector3 target = t.transform.position;
+
+            //Calculate unit position on top of target tile
+            target.y += halfHeight + t.GetComponent<Collider>().bounds.extents.y;
+
+            if (Vector3.Distance(transform.position, target) >= 0.5f)
+            {
+                calculateCharDirection(target);
+                SetHorizontalVelocity();
+
+                transform.right = -charcterDirection;
+                transform.position += velocity * Time.deltaTime;
+            } else
+            {
+                //Tile center reached
+                transform.position = target;
+                movementPath.Pop();
+            }
+
+        } else
+        {
+            RemoveSelectableTiles();
+            moving = false;
+
+            //After done moving, begin attack phase
+            attack.StartAttack(actualTargetTile);
+            if (tag == "NPCShips")
+            {
+                TurnManager.EndTurn();
+            }
+        }
+    }
+
+    public void calculateCharDirection(Vector3 target)
+    {
+        charcterDirection = target - transform.position;
+        charcterDirection.Normalize();
+    }
+
+    public void SetHorizontalVelocity()
+    {
+        velocity = charcterDirection * moveSpeed;
+    }
+
+    public Tile FindLowestF(List<Tile> tiles)
+    {
+        Tile lowest = tiles[0];
+        foreach (Tile t in tiles)
+        {
+            if (t.f < lowest.f)
+            {
+                lowest = t;
+            }
+        }
+
+        tiles.Remove(lowest);
+
+        return lowest;
+    }
+
+    public Tile FindEndTile(Tile t)
+    {
+        Stack<Tile> tempPath = new Stack<Tile>();
+
+        Tile next = t.parent;
+        while (next != null)
+        {
+            tempPath.Push(next);
+            next = next.parent;
+        }
+
+        if (tempPath.Count <= moveDistance) 
+        {
+            return t.parent;
+        }
+
+        Tile endTile = null;
+        for (int i = 0; i <= moveDistance; i++)
+        {
+            endTile = tempPath.Pop();
+        }
+
+        return endTile;
+    }
+
+    public void FindPath(Tile target)
+    {
+        ComputeNeighborsList(target);
+        GetCurrentTile();
+
+        List<Tile> openList = new List<Tile>();
+        List<Tile> closeList = new List<Tile>();
+
+        openList.Add(currentTile);
+        currentTile.h = Vector3.Distance(currentTile.transform.position, target.transform.position);
+        currentTile.f = currentTile.h;
+        
+        while (openList.Count > 0)
+        {
+            Tile t = FindLowestF(openList);
+
+            closeList.Add(t);
+
+            if (t == target)
+            {
+                actualTargetTile = FindEndTile(t);
+                MoveToTile(actualTargetTile);
+                return;
+            }
+
+            foreach (Tile tile in t.neighbors)
+            {
+                if (closeList.Contains(tile))
+                {
+                    //Already processed
+                } 
+                else if (openList.Contains(tile))
+                {
+                    float tempG = t.g + Vector3.Distance(tile.transform.position, t.transform.position);
+
+                    if (tempG < tile.g)
+                    {
+                        tile.parent = t;
+
+                        tile.g = tempG;
+                        tile.f = tile.g + tile.h;
+                    }
+                } else
+                {
+                    tile.parent = t;
+
+                    tile.g = t.g + Vector3.Distance(tile.transform.position, t.transform.position);
+                    tile.h = Vector3.Distance(tile.transform.position, target.transform.position);
+                    tile.f = tile.g + tile.h;
+
+                    openList.Add(tile);
+                }
+            }
+
+
+        }
+    }
+
+    public void BeginTurn()
+    {
+        turn = true;
+        this.currentAction = action.moving;
+    }
+
+    public void EndTurn()
+    {
+        turn = false;
     }
 }
