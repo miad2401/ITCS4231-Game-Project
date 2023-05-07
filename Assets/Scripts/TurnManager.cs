@@ -1,12 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class TurnManager : MonoBehaviour
 {
     static Dictionary<string, List<TacticalMovement>> units = new Dictionary<string, List<TacticalMovement>>();
     static Queue<string> turnKey = new Queue<string>();
     static Queue<TacticalMovement> turnTeam = new Queue<TacticalMovement>();
+
+    
 
     // Start is called before the first frame update
     void Start()
@@ -45,6 +48,7 @@ public class TurnManager : MonoBehaviour
     public static void EndTurn()
     {
         TacticalMovement unit = turnTeam.Dequeue();
+        unit.currentAction = Action.action.moving;
         unit.EndTurn();
 
         if (turnTeam.Count > 0)
@@ -77,5 +81,16 @@ public class TurnManager : MonoBehaviour
         }
 
         list.Add(unit);
+    }
+
+    public void attackClicked()
+    {
+        TacticalMovement unit = turnTeam.Peek();
+        unit.StartAttack();
+    }
+
+    public void skipClicked()
+    {
+        TacticalMovement unit = turnTeam.Peek();
     }
 }

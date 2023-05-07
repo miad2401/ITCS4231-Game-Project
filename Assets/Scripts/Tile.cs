@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Tile : MonoBehaviour
@@ -90,10 +91,27 @@ public class Tile : MonoBehaviour
             {
                 
                 RaycastHit hit;
-                if (!Physics.Raycast(tile.transform.position, Vector3.up, out hit, 10) || (tile == target))
+                if (!Physics.Raycast(tile.transform.position, Vector3.up, out hit, 10) || tile == target)
                 {
-                    //If nothing is found, add tile to neighbors
+                    //Nothing found, so add to neighbors list
                     neighbors.Add(tile);
+                } else if (Physics.Raycast(tile.transform.position, Vector3.up, out hit, 10))
+                {
+                    //Something is on the tile
+                    GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+
+                    //if that something is not a player and the current player is attacking, allow tile to neighbors list
+                    if (hit.collider.gameObject.tag != "Player")
+                    {
+                        foreach (GameObject obj in players)
+                        {
+                            if (obj.GetComponent<TacticalMovement>().currentAction == Action.action.attacking)
+                            {
+                                neighbors.Add(tile);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }

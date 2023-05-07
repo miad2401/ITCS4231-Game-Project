@@ -2,17 +2,20 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class TacticalMovement : Action
 {
-    [SerializeField] public Attack attack;
-
     Stack<Tile> movementPath = new Stack<Tile>();
 
     [HideInInspector] public bool moving = false;
+
+    [HideInInspector] public bool attacking = false;
     
     [SerializeField] public float moveSpeed = 2;
+    [SerializeField] TMP_Text shipStats;
 
     Vector3 velocity = new Vector3();
     Vector3 charcterDirection = new Vector3();
@@ -72,13 +75,28 @@ public class TacticalMovement : Action
         {
             RemoveSelectableTiles();
             moving = false;
+            attacking = true;
+
+            currentAction = action.waiting;
 
             //After done moving, begin attack phase
-            attack.StartAttack(actualTargetTile);
-            if (tag == "NPCShips")
+
+
+            /*if (tag != "NPCShips")
+            {
+                //attack.StartAttack(actualTargetTile);
+                attacking = true;
+            } else
             {
                 TurnManager.EndTurn();
-            }
+            }*/
+
+            //End turn if npc, change when code is working
+/*            if (tag == "NPCShips")
+            {
+                TurnManager.EndTurn();
+            }*/
+            
         }
     }
 
@@ -196,10 +214,16 @@ public class TacticalMovement : Action
     {
         turn = true;
         this.currentAction = action.moving;
+        shipStats.text = "Ship Stats: \nHealth: " + health + "\nDodge: " + dodge + "\nArmor: " + armor + "\nAttack Power: " + attackPower + "\nDamage: " + damage + "\nSpeed: " + moveDistance;
     }
 
     public void EndTurn()
     {
         turn = false;
+    }
+
+    public void StartAttack()
+    {
+        currentAction = action.attacking;
     }
 }

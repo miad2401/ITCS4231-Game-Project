@@ -4,21 +4,26 @@ using UnityEngine;
 
 public class Action : MonoBehaviour
 {
-    [HideInInspector ]public enum action { attacking, moving};
+    [HideInInspector ]public enum action { attacking, moving, waiting};
     [HideInInspector] public bool turn = false;
 
     [HideInInspector] public GameObject[] tiles;
     [HideInInspector] public List<Tile> selectableTiles = new List<Tile>();
-
     [HideInInspector] public Tile currentTile;
+
     [SerializeField] public int moveDistance = 1;
+    [SerializeField] public int health = 5;
+    [SerializeField] public int dodge = 3;
+    [SerializeField] public int armor = 2;
+    [SerializeField] public int attackPower = 5;
+    [SerializeField] public int damage = 3;
 
     [HideInInspector] public action currentAction;
 
     public void GetCurrentTile()
     {
         currentTile = GetTargetTile(gameObject);
-        currentTile.isSelected = true;
+        //currentTile.isSelected = true;
     }
 
     public Tile GetTargetTile(GameObject target)
@@ -65,9 +70,15 @@ public class Action : MonoBehaviour
             if (currentAction == action.attacking)
             {
                 t.isTargetable = true;
-            } else
+                t.isSelectable = false;
+            } else if (currentAction == action.moving)
             {
                 t.isSelectable = true;
+                t.isTargetable = false;
+            } else
+            {
+                t.isSelectable = false;
+                t.isTargetable = false;
             }
             
 
@@ -105,5 +116,10 @@ public class Action : MonoBehaviour
         }
 
         selectableTiles.Clear();
+    }
+
+    public void shipDeath()
+    {
+        Destroy(this);
     }
 }
